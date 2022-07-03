@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import time
 
 app = FastAPI()
 
@@ -16,18 +17,22 @@ class Post(BaseModel):
     rating: Optional[int] = None
 
 
-try:
-    conn = psycopg2.connect(
-        host="localhost",
-        dbname="fastapi",
-        user="postgres",
-        password="password123",
-        cursor_factory=RealDictCursor,
-    )
-    cursor = conn.cursor()
-    print("Database connection successfull")
-except Exception as e:
-    print("Connecting to Database failed. Error: ", e)
+while True:
+    try:
+        conn = psycopg2.connect(
+            host="localhost",
+            dbname="fastapi",
+            user="postgres",
+            password="password123",
+            port="5433",
+            cursor_factory=RealDictCursor,
+        )
+        cursor = conn.cursor()
+        print("Database connection successfull")
+        break
+    except Exception as e:
+        print("Connecting to Database failed. Error: ", e)
+        time.sleep(5)
 
 
 my_posts = [
@@ -55,15 +60,21 @@ def root():
 
 @app.get("/posts")
 def get_posts():
-    return {"data": "A single post"}
+    cursor.execute("""SELECT * FROM posts""")
+    posts = cursor.fetchall()
+    return {"data": posts}
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 def create_posts(post: Post):
-    post_dict = post.dict()
-    post_dict["id"] = randrange(1, 10000000)  # Adding an ID to make posts distinctive
-    my_posts.append(post_dict)
-    return {"data": post_dict}
+    # Parametrizing the input this way prevents SQL injection as the input is sanitized
+    cursor.execute(
+        """INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
+        (post.title, post.content, post.published),
+    )
+    new_post = cursor.fetchone()
+    conn.commit()
+    return {"data": new_post}
 
 
 @app.get("/posts/latest")
