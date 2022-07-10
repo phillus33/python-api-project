@@ -1,27 +1,19 @@
 from typing import Optional
 from fastapi import FastAPI, Response, status, HTTPException, Depends
 from fastapi.params import Body
-from pydantic import BaseModel
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 
 import models
+import schemas
 from database import engine, get_db
 from sqlalchemy.orm import Session
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-# The pydanctic model / schema that defines the structure of a request & response
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-    # rating: Optional[int] = None
 
 
 while True:
@@ -75,7 +67,7 @@ def get_posts(db: Session = Depends(get_db)):
 
 
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_posts(post: Post, db: Session = Depends(get_db)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     # Parametrizing the input this way prevents SQL injection as the input is sanitized
     # cursor.execute(
     #     """INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *""",
@@ -131,7 +123,9 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/posts/{id}")
-def update_post(id: int, updated_post: Post, db: Session = Depends(get_db)):
+def update_post(
+    id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)
+):
     # cursor.execute(
     #     """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
     #     (post.title, post.content, post.published, str(id)),
