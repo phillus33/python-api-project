@@ -4,7 +4,7 @@ from database import Base
 # import database
 from sqlalchemy import TIMESTAMP, Boolean, Column, String, Integer, text
 
-
+# sqlalchemy model that defines the actual columns of the posts table in postgres
 class Post(Base):
     __tablename__ = "posts"
 
